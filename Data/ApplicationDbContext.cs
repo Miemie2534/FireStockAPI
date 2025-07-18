@@ -9,6 +9,10 @@ namespace FireStockAPI.Data
 
         public DbSet<FireExtinguisher> fireExtinguishers => Set<FireExtinguisher>();
         public DbSet<Claim> claims => Set<Claim>();
+        public  DbSet<Incident> Incidents => Set<Incident>();
+        public DbSet<Patient> Patients => Set<Patient>();
+        public DbSet<User> Users => Set<User>();
+        public DbSet<Register> Registers => Set<Register>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -19,6 +23,7 @@ namespace FireStockAPI.Data
                 .WithOne(c => c.FireExtinguisher)
                 .HasForeignKey(c => c.FireExtinguisherId)
                 .OnDelete(DeleteBehavior.Cascade);
+
         }
     }
 }

@@ -10,6 +10,9 @@ namespace FireStockAPI.Models
         public string ActionTaken { get; set; } = string.Empty;
 
         public DateTime claimDate { get; set; } = DateTime.Now;
+        public string location { get; set; } = string.Empty;
+
+        public string Replacement { get; set; } = string.Empty; // กรณีนำถังสำรองมาทดแทน
 
         [JsonIgnore]
         public FireExtinguisher? FireExtinguisher { get; set; } 

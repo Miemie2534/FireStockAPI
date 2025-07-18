@@ -1,5 +1,7 @@
 ﻿using FireStockAPI.Data;
 using FireStockAPI.Models;
+using FireStockAPI.Service;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -11,10 +13,12 @@ namespace FireStockAPI.Controllers
     public class FireExtinguishersController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly JwtService _jwtService;
 
-        public FireExtinguishersController(ApplicationDbContext context)
+        public FireExtinguishersController(ApplicationDbContext context, JwtService jwt)
         {
             _context = context;
+            _jwtService = jwt;
         }
 
         // GET: api/FireExtinguishers

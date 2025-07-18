@@ -18,7 +18,7 @@ namespace FireStockAPI.Controllers
 
         // GET: api/RepairClaims/with-extinguisher
         [HttpGet]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll(int id)
         {
             var claims = await _claim.claims
          .Include(c => c.FireExtinguisher)
@@ -29,9 +29,11 @@ namespace FireStockAPI.Controllers
              c.Claims,
              c.claimDate,
              c.ActionTaken,
+             c.Replacement,
              SerialNumber = c.FireExtinguisher != null ? c.FireExtinguisher.serialNumber : string.Empty,
              Type = c.FireExtinguisher != null ? c.FireExtinguisher.type : string.Empty,
              Size = c.FireExtinguisher != null ? c.FireExtinguisher.size : string.Empty,
+             Location = c.FireExtinguisher != null ? c.FireExtinguisher.location : string.Empty
          })
          .ToListAsync();
             return Ok(claims);
@@ -58,16 +60,19 @@ namespace FireStockAPI.Controllers
         public async Task<IActionResult> CreateClaim([FromBody] CreateRepairClaimDto dto)
         {
             var extinguisher = await _claim.fireExtinguishers.FindAsync(dto.FireExtinguisherId);
-            if (extinguisher == null)
+            if (extinguisher == null || string.IsNullOrWhiteSpace(dto.Claims) 
+                || string.IsNullOrWhiteSpace(dto.ActionTaken) || string.IsNullOrWhiteSpace(dto.Replacement))
             {
                 return NotFound("ไม่พบถังดับเพลิง");
             }
             var claim = new Claim
             {
                 FireExtinguisherId = dto.FireExtinguisherId,
-                
+
                 Claims = dto.Claims,
-                ActionTaken = dto.ActionTaken
+                ActionTaken = dto.ActionTaken,
+                location = extinguisher.location,
+                Replacement = dto.Replacement
             };
             _claim.claims.Add(claim);
             await _claim.SaveChangesAsync();
@@ -86,8 +91,11 @@ namespace FireStockAPI.Controllers
             {
                 return NotFound();
             }
+            claim.FireExtinguisherId = model.FireExtinguisherId;
             claim.Claims = model.Claims;
             claim.ActionTaken = model.ActionTaken;
+            claim.claimDate = DateTime.Now;
+            claim.Replacement = model.Replacement;
             await _claim.SaveChangesAsync();
             return Ok();
         }
