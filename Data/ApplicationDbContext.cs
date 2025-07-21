@@ -1,9 +1,10 @@
 ﻿using FireStockAPI.Models;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace FireStockAPI.Data
 {
-    public class ApplicationDbContext : DbContext
+    public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     {
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) { }
 
@@ -11,7 +12,6 @@ namespace FireStockAPI.Data
         public DbSet<Claim> claims => Set<Claim>();
         public  DbSet<Incident> Incidents => Set<Incident>();
         public DbSet<Patient> Patients => Set<Patient>();
-        public DbSet<User> Users => Set<User>();
         public DbSet<Register> Registers => Set<Register>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

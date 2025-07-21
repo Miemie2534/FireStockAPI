@@ -1,6 +1,5 @@
 using FireStockAPI.Data;
 using FireStockAPI.Models;
-using FireStockAPI.Service;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -21,9 +20,16 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 //Connect Identity
-builder.Services.AddIdentity<IdentityUser, IdentityRole>()
-    .AddEntityFrameworkStores<ApplicationDbContext>()
-    .AddDefaultTokenProviders();
+builder.Services.AddIdentityCore<ApplicationUser>(options =>
+{
+    options.Password.RequireNonAlphanumeric = false;
+})
+.AddRoles<IdentityRole>()
+.AddEntityFrameworkStores<ApplicationDbContext>()
+.AddSignInManager()
+.AddUserManager<UserManager<ApplicationUser>>()
+.AddRoleManager<RoleManager<IdentityRole>>()
+.AddDefaultTokenProviders();
 
 builder.Services.AddControllers().AddJsonOptions(options =>
 {
@@ -50,8 +56,6 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-builder.Services.AddScoped<JwtService>();
-builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 
 
 builder.Services.AddCors(options =>

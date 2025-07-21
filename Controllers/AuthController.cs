@@ -1,11 +1,14 @@
 ﻿using FireStockAPI.Data;
 using FireStockAPI.Models;
-using FireStockAPI.Service;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 namespace FireStockAPI.Controllers
 {
@@ -13,64 +16,78 @@ namespace FireStockAPI.Controllers
     [ApiController]
     public class AuthController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
-        private readonly JwtService _jwtService;
-        private readonly IPasswordHasher<User> _passwordHasher;
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly RoleManager<IdentityRole> _roleManager;
+        private readonly IConfiguration _configuration;
 
-        public AuthController(ApplicationDbContext context, JwtService jwtService, IPasswordHasher<User> passwordHasher)
+        public AuthController(
+            UserManager<ApplicationUser> userManager, 
+            RoleManager<IdentityRole> roleManager, 
+            IConfiguration configuration)
         {
-            _jwtService = jwtService;
-            _context = context;
-            _passwordHasher = passwordHasher;
+            _userManager = userManager;
+            _roleManager = roleManager;
+            _configuration = configuration;
         }
 
         [HttpPost("register")]
-        public async Task<ActionResult> Register([FromBody] Register register )
+        public async Task<IActionResult> Register([FromBody] Register model)
         {
-            try
+            var user = new ApplicationUser
             {
-                var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.username == register.username);
-                if (existingUser != null)
-                {
-                    return BadRequest("กรุณากรอกให้ถูกต้อง");
-                }
+                UserName = model.username,
+                Email = model.email,
+                FullName = model.FullName,
+            };
 
-                var user = new User
-                {
-                    username = register.username,
-                    Role = register.role,
-                };
-
-                user.passwordHash = _passwordHasher.HashPassword(user, register.password);
-                _context.Users.Add(user);
-                await _context.SaveChangesAsync();
-                return Ok(new { message = "สมัครสมาชิกสำเร็จ", user.username });
-            }
-            catch (Exception ex) 
+            var result = await _userManager.CreateAsync(user, model.password);
+            if (!result.Succeeded)
             {
-                return StatusCode(500, "เกิดข้อผิดพลาด: " + ex.Message);
+                return BadRequest(result.Errors);
             }
+
+            if (!await _roleManager.RoleExistsAsync(model.role))
+            {
+                await _roleManager.CreateAsync(new IdentityRole(model.role));
+            }
+
+            await _userManager.AddToRoleAsync(user, model.role);
+            return Ok(new { message = "User registered successfully" });
         }
 
         [HttpPost("login")]
-        public async Task<ActionResult> Login([FromBody] LoginDto login)
+        public async Task<IActionResult> Login([FromBody] LoginDto model)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.username == login.Username);
-            if (user == null) return Unauthorized("ไม่พบผู้ใช้ กรุณาลองใหม่อีกครั้ง");
+            var user = await _userManager.FindByNameAsync(model.Username); // Await the Task to get the actual ApplicationUser object
+            if (user != null && await _userManager.CheckPasswordAsync(user, model.Password))
+            {
+                var userRole = await _userManager.GetRolesAsync(user);
+                var authClaims = new List<System.Security.Claims.Claim>
+               {
+                   new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, model.Username),
+                   new System.Security.Claims.Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+               };
 
-            var result = _passwordHasher.VerifyHashedPassword(user, user.passwordHash, login.Password);
-            if (result == PasswordVerificationResult.Failed)
-                return Unauthorized("รหัสผ่านไม่ถูกต้อง");
+                authClaims.AddRange(userRole.Select(role => new System.Security.Claims.Claim(ClaimTypes.Role, role)));
 
-            var token = _jwtService.GenerateToken(user);
-            return Ok(new { token, user.username, user.Role });
-        }
+                var token = new JwtSecurityToken(
+                    issuer: _configuration["Jwt:Issuer"],
 
-        [HttpGet("admin-only")]
-        [Authorize(Roles ="admin")]
-        public IActionResult OnlyCanSee()
-        {
-            return Ok("ข้อมูลแสดงสำหรับแอดมิน");
+                    audience: _configuration["Jwt:Audience"],
+                    claims: authClaims,
+                    expires: DateTime.Now.AddHours(1),
+                    signingCredentials: new SigningCredentials(
+                        new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!)),
+                        SecurityAlgorithms.HmacSha256)
+                );
+
+                return Ok(new
+                {
+                    token = new JwtSecurityTokenHandler().WriteToken(token),
+                    expiration = token.ValidTo
+                });
+            }
+            return Unauthorized(new { message = "Invalid username or password" });
         }
     }
 }
