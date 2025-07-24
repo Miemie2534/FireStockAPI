@@ -71,6 +71,8 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+app.UseHttpsRedirection();
+
 
 app.UseCors("AllowAngularClient");
 app.UseAuthentication();
@@ -86,7 +88,7 @@ if (app.Environment.IsDevelopment())
 
 
 
-app.UseHttpsRedirection();
+
 
 
 app.MapControllers();

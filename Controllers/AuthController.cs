@@ -89,5 +89,15 @@ namespace FireStockAPI.Controllers
             }
             return Unauthorized(new { message = "Invalid username or password" });
         }
+
+        [Authorize]
+        [HttpGet("me")]
+        public IActionResult GetMe()
+        {
+            var username = User.Identity?.Name;
+            var roles = User.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value).ToList();
+
+            return Ok(new { username, roles });
+        }
     }
 }
